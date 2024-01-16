@@ -16,6 +16,12 @@ type ssminator struct {
 	ssmClient *ssm.Client
 }
 
+// New returns a pointer to a new instance of `ssminator`.
+// To specify an AWS Profile, set the environment variable before constructing your client:
+//
+//	AWS_PROFILE=profile_name
+//
+// See: https://aws.github.io/aws-sdk-go-v2/docs/configuring-sdk/#specifying-profiles
 func New() *ssminator {
 	cfg, err := newDefaultAWSConfig()
 	if err != nil {
