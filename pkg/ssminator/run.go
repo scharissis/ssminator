@@ -19,35 +19,11 @@ type Command struct {
 
 // RunOnAllInstances run a given command on all available fleet-managed instances.
 // Returns asynchronously. The status of the job needs to be queried based on CommandID.
-// TODOs:
-// - allow passing of params
-func (s ssminator) RunOnAllInstances() (*Command, error) {
+func (s ssminator) RunOnAllInstances(cmdInput *ssm.SendCommandInput) (*Command, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), time.Second*30)
 	defer cancel()
 
-	instanceIDs, err := s.getManagedInstanceIDList()
-	if err != nil {
-		return nil, err
-	}
-
-	docParams := map[string][]string{
-		`commands`: {"uname -a"},
-	}
-
-	params := &ssm.SendCommandInput{
-		// https://ap-southeast-2.console.aws.amazon.com/systems-manager/documents/AWS-RunShellScript/description
-		DocumentName:     aws.String("AWS-RunShellScript"), // arg
-		DocumentHash:     aws.String("99749de5e62f71e5ebe9a55c2321e2c394796afe7208cff048696541e6f6771e"),
-		DocumentHashType: types.DocumentHashTypeSha256,
-		DocumentVersion:  aws.String("1"),
-		Parameters:       docParams,
-		Comment:          aws.String("Test"), // arg
-		InstanceIds:      instanceIDs,        // TODO
-		MaxConcurrency:   aws.String("100%"), // arg
-		MaxErrors:        aws.String("100%"), // arg
-		TimeoutSeconds:   aws.Int32(600),     // arg
-	}
-	out, err := s.ssmClient.SendCommand(ctx, params)
+	out, err := s.ssmClient.SendCommand(ctx, cmdInput)
 	if err != nil {
 		return nil, err
 	}
@@ -60,6 +36,30 @@ func (s ssminator) RunOnAllInstances() (*Command, error) {
 	}
 
 	return command, nil
+}
+
+// DefaultCmdInput returns a ready-to-use `*ssm.SendCommandInput`.
+func (s ssminator) DefaultCmdInput() (*ssm.SendCommandInput, error) {
+	instanceIDs, err := s.getManagedInstanceIDList()
+	if err != nil {
+		return nil, err
+	}
+
+	return &ssm.SendCommandInput{
+		// https://ap-southeast-2.console.aws.amazon.com/systems-manager/documents
+		DocumentName:     aws.String("AWS-RunShellScript"),
+		DocumentHash:     aws.String("99749de5e62f71e5ebe9a55c2321e2c394796afe7208cff048696541e6f6771e"),
+		DocumentHashType: types.DocumentHashTypeSha256,
+		DocumentVersion:  aws.String("1"),
+		Parameters: map[string][]string{
+			`commands`: {"uname -a"},
+		},
+		Comment:        aws.String("SSMinator/AWS-RunShellScript"),
+		InstanceIds:    instanceIDs,
+		MaxConcurrency: aws.String("100%"),
+		MaxErrors:      aws.String("100%"),
+		TimeoutSeconds: aws.Int32(60),
+	}, nil
 }
 
 func (s ssminator) getManagedInstanceIDList() ([]string, error) {

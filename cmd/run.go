@@ -12,7 +12,11 @@ var runCmd = &cobra.Command{
 	Short: "Run commands",
 	Long:  `Run commands`,
 	Run: func(cmd *cobra.Command, args []string) {
-		out, err := ssmi.RunOnAllInstances()
+		cmdInput, err := ssmi.DefaultCmdInput()
+		if err != nil {
+			log.Fatal("failed", err)
+		}
+		out, err := ssmi.RunOnAllInstances(cmdInput)
 		if err != nil {
 			log.Fatal("failed", err)
 		}
